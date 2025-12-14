@@ -11,21 +11,21 @@ const client = new Client({
   intents: [GatewayIntentBits.Guilds]
 });
 
-// =====================
-// 💾 DATA STORES
-// =====================
+/* =========================
+   💾 SIMPLE IN-MEMORY DATA
+========================= */
 const balances = new Map();
 const lastDice = new Map();
 
-// =====================
-// 💰 BALANCE FUNCTIONS
-// =====================
+/* =========================
+   💰 BALANCE FUNCTIONS
+========================= */
 function getBalance(userId) {
   if (!balances.has(userId)) balances.set(userId, 10);
 
   let bal = balances.get(userId);
   if (bal <= 0) {
-    bal = 1;
+    bal = 1; // safety coin
     balances.set(userId, bal);
   }
   return bal;
@@ -35,17 +35,22 @@ function setBalance(userId, amount) {
   balances.set(userId, amount);
 }
 
-// =====================
-// 📜 SLASH COMMANDS
-// =====================
+/* =========================
+   📜 SLASH COMMANDS
+========================= */
 const commands = [
   new SlashCommandBuilder()
     .setName("help")
-    .setDescription("Shows GambliX commands"),
+    .setDescription("Show GambliX commands"),
 
   new SlashCommandBuilder()
     .setName("b")
-    .setDescription("Check your balance"),
+    .setDescription("Check balance")
+    .addUserOption(o =>
+      o.setName("user")
+        .setDescription("Check another user's balance")
+        .setRequired(false)
+    ),
 
   new SlashCommandBuilder()
     .setName("ht")
@@ -70,9 +75,9 @@ const commands = [
     .setDescription("Roll a daily dice")
 ];
 
-// =====================
-// 🚀 REGISTER
-// =====================
+/* =========================
+   🚀 REGISTER COMMANDS
+========================= */
 client.once("ready", async () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
 
@@ -82,53 +87,84 @@ client.once("ready", async () => {
     { body: commands }
   );
 
-  console.log("📜 Commands registered");
+  console.log("📜 Slash commands registered");
 });
 
-// =====================
-// 🎮 HANDLER
-// =====================
+/* =========================
+   🎮 INTERACTION HANDLER
+========================= */
 client.on("interactionCreate", async interaction => {
   if (!interaction.isChatInputCommand()) return;
+
   const userId = interaction.user.id;
 
-  // ---------- HELP ----------
+  /* ---------- HELP ---------- */
   if (interaction.commandName === "help") {
     const embed = new EmbedBuilder()
-      .setTitle("🎰 GAMBLIX — GAMBLING SUPPORT")
+      .setTitle("🎰 GAMBLIX SUPPORT!")
+      .setColor("Gold")
       .setDescription(
-`Don't know how to start? Try these commands:
+`🎲 **Discord bot: GambliX**
+RNG • BETTING • CASINO • 24/7
 
+━━━━━━━━━━━━━━━━━━
 🪙 **/ht <h/t> <money>**
-Heads or Tails betting game
+Play Heads or Tails and bet your coins.
 
 🎲 **/dice**
-Daily dice with risky odds
+Roll a dice once per day.
+Higher value = rarer & better.
 
 💰 **/b**
-Check your balance`
+Check your balance.
+Extra: \`/b <user>\`
+
+✊ **/rps <user> <money> <r/p/s>**
+Rock Paper Scissors *(Coming soon)*
+
+🃏 **/challenge <user> <money>**
+Strategic card game *(Coming soon)*
+
+⛏️ **/mg**
+Mining simulator *(Coming soon)*
+
+🛒 **/shop**
+Buy items & upgrades *(Coming soon)*
+
+━━━━━━━━━━━━━━━━━━
+💬 Support: **@thearrasoverlordyt**
+`
       )
-      .setColor("Gold");
+      .setFooter({ text: "GambliX — Your luck. Your rules." });
 
     return interaction.reply({ embeds: [embed], ephemeral: true });
   }
 
-  // ---------- BALANCE ----------
+  /* ---------- BALANCE ---------- */
   if (interaction.commandName === "b") {
-    return interaction.reply({
-      content: `💰 You have **$${getBalance(userId)}** 🪙`,
-      ephemeral: true
-    });
+    const target = interaction.options.getUser("user") || interaction.user;
+    const bal = getBalance(target.id);
+
+    const embed = new EmbedBuilder()
+      .setTitle("💰 Balance")
+      .setColor("Green")
+      .setDescription(`**${target.username}** has **$${bal}** 🪙`);
+
+    return interaction.reply({ embeds: [embed], ephemeral: true });
   }
 
-  // ---------- HT ----------
+  /* ---------- HEADS OR TAILS ---------- */
   if (interaction.commandName === "ht") {
     const side = interaction.options.getString("side");
     const bet = interaction.options.getInteger("money");
+
     let balance = getBalance(userId);
 
-    if (bet <= 0 || bet > balance)
-      return interaction.reply({ content: "❌ Invalid bet.", ephemeral: true });
+    if (bet <= 0)
+      return interaction.reply({ content: "❌ Bet must be positive.", ephemeral: true });
+
+    if (bet > balance)
+      return interaction.reply({ content: "❌ Not enough coins.", ephemeral: true });
 
     const before = balance;
     const result = Math.random() < 0.5 ? "h" : "t";
@@ -140,25 +176,28 @@ Check your balance`
     const embed = new EmbedBuilder()
       .setTitle("🎰 RESULTS")
       .setColor(win ? "Green" : "Red")
-      .setDescription(win ? "🎉 You won!" : "❌ You lost!")
+      .setDescription(win ? "🎉 **You won!**" : "❌ **You lost!**")
       .addFields(
         { name: "🪙 Bet", value: side === "h" ? "Heads" : "Tails", inline: true },
         { name: "💸 Before", value: `$${before}`, inline: true },
-        { name: "💰 Balance", value: `$${balance}` }
+        {
+          name: "💰 Balance Update",
+          value: `Now: $${balance} (${win ? "+" : "-"}$${bet})`
+        }
       )
       .setFooter({ text: "✨ Keep it up!" });
 
     return interaction.reply({ embeds: [embed] });
   }
 
-  // ---------- DICE ----------
+  /* ---------- DICE ---------- */
   if (interaction.commandName === "dice") {
     const now = Date.now();
     const last = lastDice.get(userId) || 0;
 
     if (now - last < 86400000)
       return interaction.reply({
-        content: "⏳ You can only roll the dice once per day.",
+        content: "⏳ You can roll the dice once per day.",
         ephemeral: true
       });
 
@@ -166,7 +205,6 @@ Check your balance`
 
     const r = Math.random();
     let roll = 1;
-
     if (r < 0.5) roll = 1;
     else if (r < 0.75) roll = 2;
     else if (r < 0.875) roll = 3;
@@ -180,9 +218,9 @@ Check your balance`
 
     const embed = new EmbedBuilder()
       .setTitle("🎲 DICE RESULTS")
-      .setDescription(`You rolled **${roll}**`)
-      .addFields({ name: "💰 New Balance", value: `$${balance}` })
-      .setColor("Purple");
+      .setColor("Purple")
+      .setDescription(`You rolled **${roll}** 🎲`)
+      .addFields({ name: "💰 New Balance", value: `$${balance}` });
 
     return interaction.reply({ embeds: [embed] });
   }
