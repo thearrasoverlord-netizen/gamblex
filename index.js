@@ -82,7 +82,7 @@ const commands = [
 
   new SlashCommandBuilder()
     .setName("rps")
-    .setDescription("Play Rock Paper Scissors against another player")
+    .setDescription("Challenge someone to Rock Paper Scissors")
     .addUserOption(o =>
       o.setName("user")
         .setDescription("Opponent")
@@ -93,20 +93,8 @@ const commands = [
         .setDescription("Bet amount")
         .setRequired(true)
     )
-new SlashCommandBuilder()
-  .setName("rps")
-  .setDescription("Challenge someone to Rock Paper Scissors")
-  .addUserOption(o =>
-    o.setName("user")
-      .setDescription("Opponent")
-      .setRequired(true)
-  )
-  .addIntegerOption(o =>
-    o.setName("money")
-      .setDescription("Bet amount")
-      .setRequired(true)
-  )
-];,
+];
+
 /* =========================
    🚀 REGISTER COMMANDS
 ========================= */
