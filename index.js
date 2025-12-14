@@ -4,7 +4,10 @@ import {
   SlashCommandBuilder,
   EmbedBuilder,
   REST,
-  Routes
+  Routes,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle
 } from "discord.js";
 
 const client = new Client({
@@ -18,6 +21,7 @@ const balances = new Map();
 const lastDice = new Map();
 const inventories = new Map(); // mining inventory
 const pickaxes = new Map();    // pickaxe level
+const rpsGames = new Map();
 
 /* =========================
    💰 BALANCE FUNCTIONS
@@ -89,18 +93,20 @@ const commands = [
         .setDescription("Bet amount")
         .setRequired(true)
     )
-    .addStringOption(o =>
-      o.setName("choice")
-        .setDescription("Your choice")
-        .setRequired(true)
-        .addChoices(
-          { name: "Rock", value: "r" },
-          { name: "Paper", value: "p" },
-          { name: "Scissors", value: "s" }
-        )
-    )
-];
-
+new SlashCommandBuilder()
+  .setName("rps")
+  .setDescription("Challenge someone to Rock Paper Scissors")
+  .addUserOption(o =>
+    o.setName("user")
+      .setDescription("Opponent")
+      .setRequired(true)
+  )
+  .addIntegerOption(o =>
+    o.setName("money")
+      .setDescription("Bet amount")
+      .setRequired(true)
+  )
+];,
 /* =========================
    🚀 REGISTER COMMANDS
 ========================= */
