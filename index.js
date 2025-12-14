@@ -1,24 +1,52 @@
 import {
   Client,
   GatewayIntentBits,
-  REST,
-  Routes,
   SlashCommandBuilder,
-  EmbedBuilder
+  EmbedBuilder,
+  REST,
+  Routes
 } from "discord.js";
-
-/* ───────── CLIENT ───────── */
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds]
 });
 
-/* ───────── SLASH COMMANDS ───────── */
+// =====================
+// 💾 SIMPLE MONEY STORE
+// =====================
+const balances = new Map();
 
+function getBalance(userId) {
+  if (!balances.has(userId)) {
+    balances.set(userId, 10); // starting money
+  }
+
+  let balance = balances.get(userId);
+
+  // Safety net: if 0, give 1 coin
+  if (balance <= 0) {
+    balance = 1;
+    balances.set(userId, balance);
+  }
+
+  return balance;
+}
+
+function setBalance(userId, amount) {
+  balances.set(userId, amount);
+}
+
+// =====================
+// 📜 SLASH COMMANDS
+// =====================
 const commands = [
   new SlashCommandBuilder()
     .setName("help")
-    .setDescription("Show all GambliX commands"),
+    .setDescription("Shows GambliX commands"),
+
+  new SlashCommandBuilder()
+    .setName("b")
+    .setDescription("Check your balance"),
 
   new SlashCommandBuilder()
     .setName("ht")
@@ -26,7 +54,7 @@ const commands = [
     .addStringOption(option =>
       option
         .setName("side")
-        .setDescription("Choose heads (h) or tails (t)")
+        .setDescription("h = heads, t = tails")
         .setRequired(true)
         .addChoices(
           { name: "Heads", value: "h" },
@@ -36,122 +64,98 @@ const commands = [
     .addIntegerOption(option =>
       option
         .setName("money")
-        .setDescription("Amount of money to bet")
+        .setDescription("Amount to bet")
         .setRequired(true)
-        .setMinValue(1)
     )
 ];
 
-/* ───────── READY ───────── */
-
+// =====================
+// 🚀 REGISTER COMMANDS
+// =====================
 client.once("ready", async () => {
-  console.log("✅ GambliX is online");
+  console.log(`✅ Logged in as ${client.user.tag}`);
 
   const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
 
-  try {
-    await rest.put(
-      Routes.applicationCommands(client.user.id),
-      { body: commands }
-    );
-    console.log("✅ Slash commands registered");
-  } catch (error) {
-    console.error(error);
-  }
+  await rest.put(
+    Routes.applicationCommands(client.user.id),
+    { body: commands }
+  );
+
+  console.log("📜 Slash commands registered");
 });
 
-/* ───────── INTERACTIONS ───────── */
-
+// =====================
+// 🎮 COMMAND HANDLER
+// =====================
 client.on("interactionCreate", async interaction => {
   if (!interaction.isChatInputCommand()) return;
 
-  /* ───── /help ───── */
-  if (interaction.commandName === "help") {
-    const embed = new EmbedBuilder()
-      .setTitle("🎰 GAMBLIX — GAMBLING SUPPORT!")
-      .setDescription(
-        "Don't know how to start yet? Check out some games we prepared for you!"
-      )
-      .addFields(
-        {
-          name: "🪙 Heads or Tails",
-          value:
-            "`/ht <h/t> <money>`\n" +
-            "Heads or Tails! The iconic coin flip challenge is here to test your luck.\n" +
-            "Bet `h` (heads) or `t` (tails) and become the **KING**!"
-        },
-        {
-          name: "🎲 Daily Dice",
-          value:
-            "`/dice`\n" +
-            "Throw the dice **once per day**!\n" +
-            "The higher the number you roll, the more money you earn."
-        },
-        {
-          name: "✊ Rock Paper Scissors",
-          value:
-            "`/rps <r/p/s> <money> @user`\n" +
-            "Challenge another server member to a classic duel."
-        },
-        {
-          name: "🃏 Card Challenge",
-          value:
-            "`/challenge @user <money>`\n" +
-            "A strategic card duel between two players."
-        },
-        {
-          name: "💰 Balance & Stats",
-          value:
-            "`/b`\n" +
-            "Check your current balance and gambling statistics."
-        },
-        {
-          name: "🛒 Shop",
-          value:
-            "`/shop`\n" +
-            "Buy loot boxes, miners, pickaxes and more!"
-        },
-        {
-          name: "⛏️ Mining Game",
-          value:
-            "`/mg`\n" +
-            "Mine resources, manage turns and sell for profit."
-        }
-      )
-      .setFooter({
-        text: "Still have questions? Found a bug? DM @thearrasoverlordyt"
-      })
-      .setColor(0x00ff88);
+  const userId = interaction.user.id;
 
-    await interaction.reply({
-      embeds: [embed],
-      ephemeral: true
-    });
+  // -------- BALANCE --------
+  if (interaction.commandName === "b") {
+    const balance = getBalance(userId);
+
+    const embed = new EmbedBuilder()
+      .setTitle("💰 Your Balance")
+      .setDescription(`You currently have **$${balance}** 🪙`)
+      .setColor("Gold");
+
+    return interaction.reply({ embeds: [embed], ephemeral: true });
   }
 
-  /* ───── /ht ───── */
+  // -------- HEADS OR TAILS --------
   if (interaction.commandName === "ht") {
     const side = interaction.options.getString("side");
-    const money = interaction.options.getInteger("money");
+    const bet = interaction.options.getInteger("money");
 
+    let balance = getBalance(userId);
+
+    if (bet <= 0) {
+      return interaction.reply({
+        content: "❌ Bet must be greater than 0.",
+        ephemeral: true
+      });
+    }
+
+    if (bet > balance) {
+      return interaction.reply({
+        content: "❌ You don't have enough coins.",
+        ephemeral: true
+      });
+    }
+
+    const before = balance;
+
+    // Coin flip
     const result = Math.random() < 0.5 ? "h" : "t";
-    const resultText = result === "h" ? "Heads" : "Tails";
-
     const win = side === result;
 
-    await interaction.reply({
-      content:
-        `🪙 **Heads or Tails**\n\n` +
-        `You chose: **${side === "h" ? "Heads" : "Tails"}**\n` +
-        `Result: **${resultText}**\n\n` +
-        (win
-          ? `🎉 **YOU WON!** You earned **${money} coins**.`
-          : `💀 **You lost!** You lost **${money} coins**.`),
-      ephemeral: false
-    });
+    balance = win ? balance + bet : balance - bet;
+    setBalance(userId, balance);
+
+    const embed = new EmbedBuilder()
+      .setTitle("🎰 RESULTS")
+      .setColor(win ? "Green" : "Red")
+      .setDescription(
+        win
+          ? "🎉 **You won!**"
+          : "❌ **You lost!**"
+      )
+      .addFields(
+        { name: "🪙 Bet", value: side === "h" ? "Heads" : "Tails", inline: true },
+        { name: "💸 Before", value: `$${before}`, inline: true },
+        {
+          name: "💰 Balance Update",
+          value: `Now: $${balance} (${win ? "+" : "-"}$${bet})`
+        }
+      )
+      .setFooter({ text: "✨ Keep it up!" });
+
+    return interaction.reply({ embeds: [embed] });
   }
 });
 
-/* ───────── LOGIN ───────── */
-
+// =====================
 client.login(process.env.TOKEN);
