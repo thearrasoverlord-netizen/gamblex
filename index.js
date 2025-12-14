@@ -7,6 +7,8 @@ import {
   EmbedBuilder
 } from "discord.js";
 
+/* ───────── CLIENT ───────── */
+
 const client = new Client({
   intents: [GatewayIntentBits.Guilds]
 });
@@ -16,10 +18,31 @@ const client = new Client({
 const commands = [
   new SlashCommandBuilder()
     .setName("help")
-    .setDescription("Show all GambliX commands")
+    .setDescription("Show all GambliX commands"),
+
+  new SlashCommandBuilder()
+    .setName("ht")
+    .setDescription("Play Heads or Tails")
+    .addStringOption(option =>
+      option
+        .setName("side")
+        .setDescription("Choose heads (h) or tails (t)")
+        .setRequired(true)
+        .addChoices(
+          { name: "Heads", value: "h" },
+          { name: "Tails", value: "t" }
+        )
+    )
+    .addIntegerOption(option =>
+      option
+        .setName("money")
+        .setDescription("Amount of money to bet")
+        .setRequired(true)
+        .setMinValue(1)
+    )
 ];
 
-/* ───────── BOT READY ───────── */
+/* ───────── READY ───────── */
 
 client.once("ready", async () => {
   console.log("✅ GambliX is online");
@@ -32,8 +55,8 @@ client.once("ready", async () => {
       { body: commands }
     );
     console.log("✅ Slash commands registered");
-  } catch (err) {
-    console.error(err);
+  } catch (error) {
+    console.error(error);
   }
 });
 
@@ -42,6 +65,7 @@ client.once("ready", async () => {
 client.on("interactionCreate", async interaction => {
   if (!interaction.isChatInputCommand()) return;
 
+  /* ───── /help ───── */
   if (interaction.commandName === "help") {
     const embed = new EmbedBuilder()
       .setTitle("🎰 GAMBLIX — GAMBLING SUPPORT!")
@@ -61,22 +85,19 @@ client.on("interactionCreate", async interaction => {
           value:
             "`/dice`\n" +
             "Throw the dice **once per day**!\n" +
-            "The higher the number you roll, the more money you earn.\n" +
-            "🍀 *Good luck!*"
+            "The higher the number you roll, the more money you earn."
         },
         {
           name: "✊ Rock Paper Scissors",
           value:
             "`/rps <r/p/s> <money> @user`\n" +
-            "Challenge another server member to a classic duel.\n" +
-            "Winner takes the bet — choose wisely!"
+            "Challenge another server member to a classic duel."
         },
         {
           name: "🃏 Card Challenge",
           value:
             "`/challenge @user <money>`\n" +
-            "A strategic card duel between two players.\n" +
-            "Play your cards carefully and win the central deck!"
+            "A strategic card duel between two players."
         },
         {
           name: "💰 Balance & Stats",
@@ -88,14 +109,13 @@ client.on("interactionCreate", async interaction => {
           name: "🛒 Shop",
           value:
             "`/shop`\n" +
-            "Buy loot boxes, miners, pickaxes and more to boost your earnings!"
+            "Buy loot boxes, miners, pickaxes and more!"
         },
         {
           name: "⛏️ Mining Game",
           value:
             "`/mg`\n" +
-            "Explore caves, mine valuable resources and sell them for profit.\n" +
-            "Each action consumes a turn — plan wisely!"
+            "Mine resources, manage turns and sell for profit."
         }
       )
       .setFooter({
@@ -106,6 +126,28 @@ client.on("interactionCreate", async interaction => {
     await interaction.reply({
       embeds: [embed],
       ephemeral: true
+    });
+  }
+
+  /* ───── /ht ───── */
+  if (interaction.commandName === "ht") {
+    const side = interaction.options.getString("side");
+    const money = interaction.options.getInteger("money");
+
+    const result = Math.random() < 0.5 ? "h" : "t";
+    const resultText = result === "h" ? "Heads" : "Tails";
+
+    const win = side === result;
+
+    await interaction.reply({
+      content:
+        `🪙 **Heads or Tails**\n\n` +
+        `You chose: **${side === "h" ? "Heads" : "Tails"}**\n` +
+        `Result: **${resultText}**\n\n` +
+        (win
+          ? `🎉 **YOU WON!** You earned **${money} coins**.`
+          : `💀 **You lost!** You lost **${money} coins**.`),
+      ephemeral: false
     });
   }
 });
