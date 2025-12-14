@@ -250,6 +250,69 @@ Buy items & upgrades *(Coming soon)*
 
     return interaction.reply({ embeds: [embed] });
   }
+  /* ---------- RPS ---------- */
+if (interaction.commandName === "rps") {
+  const opponent = interaction.options.getUser("user");
+  const bet = interaction.options.getInteger("money");
+  const choice = interaction.options.getString("choice");
+
+  if (opponent.bot)
+    return interaction.reply({ content: "🤖 You can't play against bots.", ephemeral: true });
+
+  if (opponent.id === userId)
+    return interaction.reply({ content: "❌ You can't play against yourself.", ephemeral: true });
+
+  let balance = getBalance(userId);
+  let opponentBalance = getBalance(opponent.id);
+
+  if (bet <= 0)
+    return interaction.reply({ content: "❌ Bet must be positive.", ephemeral: true });
+
+  if (bet > balance)
+    return interaction.reply({ content: "❌ You don't have enough coins.", ephemeral: true });
+
+  if (bet > opponentBalance)
+    return interaction.reply({ content: "❌ Opponent doesn't have enough coins.", ephemeral: true });
+
+  const choices = ["r", "p", "s"];
+  const opponentChoice = choices[Math.floor(Math.random() * 3)];
+
+  const wins =
+    (choice === "r" && opponentChoice === "s") ||
+    (choice === "p" && opponentChoice === "r") ||
+    (choice === "s" && opponentChoice === "p");
+
+  const draw = choice === opponentChoice;
+
+  if (!draw) {
+    if (wins) {
+      setBalance(userId, balance + bet);
+      setBalance(opponent.id, opponentBalance - bet);
+    } else {
+      setBalance(userId, balance - bet);
+      setBalance(opponent.id, opponentBalance + bet);
+    }
+  }
+
+  const name = c =>
+    c === "r" ? "🪨 Rock" :
+    c === "p" ? "📄 Paper" :
+    "✂️ Scissors";
+
+  const embed = new EmbedBuilder()
+    .setTitle("✊ RPS RESULTS")
+    .setColor(draw ? "Grey" : wins ? "Green" : "Red")
+    .addFields(
+      { name: "You", value: name(choice), inline: true },
+      { name: "Opponent", value: name(opponentChoice), inline: true },
+      {
+        name: "Result",
+        value: draw ? "🤝 Draw!" : wins ? "🎉 You won!" : "❌ You lost!"
+      }
+    );
+
+  return interaction.reply({ embeds: [embed] });
+}
 });
 
 client.login(process.env.TOKEN);
