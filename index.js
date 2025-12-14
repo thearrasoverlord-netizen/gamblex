@@ -351,4 +351,6 @@ if (interaction.commandName === "rps") {
   });
 }
 
+});
+
 client.login(process.env.TOKEN);
