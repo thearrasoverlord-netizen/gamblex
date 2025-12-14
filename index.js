@@ -245,68 +245,110 @@ Buy items & upgrades *(Coming soon)*
     return interaction.reply({ embeds: [embed] });
   }
   /* ---------- RPS ---------- */
+/* ---------- RPS (REAL WITH BUTTONS) ---------- */
 if (interaction.commandName === "rps") {
   const opponent = interaction.options.getUser("user");
   const bet = interaction.options.getInteger("money");
-  const choice = interaction.options.getString("choice");
+  const challenger = interaction.user;
 
   if (opponent.bot)
     return interaction.reply({ content: "🤖 You can't play against bots.", ephemeral: true });
 
-  if (opponent.id === userId)
+  if (opponent.id === challenger.id)
     return interaction.reply({ content: "❌ You can't play against yourself.", ephemeral: true });
 
-  let balance = getBalance(userId);
-  let opponentBalance = getBalance(opponent.id);
+  const bal1 = getBalance(challenger.id);
+  const bal2 = getBalance(opponent.id);
 
   if (bet <= 0)
     return interaction.reply({ content: "❌ Bet must be positive.", ephemeral: true });
 
-  if (bet > balance)
+  if (bet > bal1)
     return interaction.reply({ content: "❌ You don't have enough coins.", ephemeral: true });
 
-  if (bet > opponentBalance)
+  if (bet > bal2)
     return interaction.reply({ content: "❌ Opponent doesn't have enough coins.", ephemeral: true });
 
-  const choices = ["r", "p", "s"];
-  const opponentChoice = choices[Math.floor(Math.random() * 3)];
-
-  const wins =
-    (choice === "r" && opponentChoice === "s") ||
-    (choice === "p" && opponentChoice === "r") ||
-    (choice === "s" && opponentChoice === "p");
-
-  const draw = choice === opponentChoice;
-
-  if (!draw) {
-    if (wins) {
-      setBalance(userId, balance + bet);
-      setBalance(opponent.id, opponentBalance - bet);
-    } else {
-      setBalance(userId, balance - bet);
-      setBalance(opponent.id, opponentBalance + bet);
-    }
-  }
-
-  const name = c =>
-    c === "r" ? "🪨 Rock" :
-    c === "p" ? "📄 Paper" :
-    "✂️ Scissors";
+  const row = new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId("rps_r").setLabel("🪨 Rock").setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId("rps_p").setLabel("📄 Paper").setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId("rps_s").setLabel("✂️ Scissors").setStyle(ButtonStyle.Primary)
+  );
 
   const embed = new EmbedBuilder()
-    .setTitle("✊ RPS RESULTS")
-    .setColor(draw ? "Grey" : wins ? "Green" : "Red")
-    .addFields(
-      { name: "You", value: name(choice), inline: true },
-      { name: "Opponent", value: name(opponentChoice), inline: true },
-      {
-        name: "Result",
-        value: draw ? "🤝 Draw!" : wins ? "🎉 You won!" : "❌ You lost!"
-      }
+    .setTitle("🪨📄✂️ RPS CHALLENGE!")
+    .setColor("Gold")
+    .setDescription(
+      `**${challenger.username}** has challenged **${opponent.username}**!\n\n` +
+      `💰 Bet: **${bet} coins**\n` +
+      `⏳ You have **1 hour** to choose.`
     );
 
-  return interaction.reply({ embeds: [embed] });
+  const msg = await interaction.reply({
+    embeds: [embed],
+    components: [row],
+    fetchReply: true
+  });
+
+  const collector = msg.createMessageComponentCollector({
+    time: 60 * 60 * 1000 // 1 hour
+  });
+
+  collector.on("collect", i => {
+    if (i.user.id !== opponent.id) {
+      return i.reply({ content: "❌ This challenge is not for you.", ephemeral: true });
+    }
+
+    const opponentChoice = i.customId.split("_")[1];
+    const choices = ["r", "p", "s"];
+    const challengerChoice = choices[Math.floor(Math.random() * 3)];
+
+    const win =
+      (challengerChoice === "r" && opponentChoice === "s") ||
+      (challengerChoice === "p" && opponentChoice === "r") ||
+      (challengerChoice === "s" && opponentChoice === "p");
+
+    const draw = challengerChoice === opponentChoice;
+
+    if (!draw) {
+      if (win) {
+        setBalance(challenger.id, bal1 + bet);
+        setBalance(opponent.id, bal2 - bet);
+      } else {
+        setBalance(challenger.id, bal1 - bet);
+        setBalance(opponent.id, bal2 + bet);
+      }
+    }
+
+    const name = c =>
+      c === "r" ? "🪨 Rock" :
+      c === "p" ? "📄 Paper" :
+      "✂️ Scissors";
+
+    const resultEmbed = new EmbedBuilder()
+      .setTitle("✊ RPS RESULTS")
+      .setColor(draw ? "Grey" : win ? "Green" : "Red")
+      .addFields(
+        { name: challenger.username, value: name(challengerChoice), inline: true },
+        { name: opponent.username, value: name(opponentChoice), inline: true },
+        {
+          name: "Result",
+          value: draw ? "🤝 Draw!" : win ? `🎉 ${challenger.username} won!` : `🎉 ${opponent.username} won!`
+        }
+      );
+
+    collector.stop();
+    i.update({ embeds: [resultEmbed], components: [] });
+  });
+
+  collector.on("end", (_, reason) => {
+    if (reason === "time") {
+      msg.edit({
+        content: "⌛ RPS challenge expired. No response in time.",
+        components: []
+      });
+    }
+  });
 }
-});
 
 client.login(process.env.TOKEN);
