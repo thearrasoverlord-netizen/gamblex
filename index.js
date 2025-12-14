@@ -16,6 +16,8 @@ const client = new Client({
 ========================= */
 const balances = new Map();
 const lastDice = new Map();
+const inventories = new Map(); // mining inventory
+const pickaxes = new Map();    // pickaxe level
 
 /* =========================
    💰 BALANCE FUNCTIONS
@@ -72,7 +74,31 @@ const commands = [
 
   new SlashCommandBuilder()
     .setName("dice")
-    .setDescription("Roll a daily dice")
+    .setDescription("Roll a daily dice"),
+
+  new SlashCommandBuilder()
+    .setName("rps")
+    .setDescription("Play Rock Paper Scissors against another player")
+    .addUserOption(o =>
+      o.setName("user")
+        .setDescription("Opponent")
+        .setRequired(true)
+    )
+    .addIntegerOption(o =>
+      o.setName("money")
+        .setDescription("Bet amount")
+        .setRequired(true)
+    )
+    .addStringOption(o =>
+      o.setName("choice")
+        .setDescription("Your choice")
+        .setRequired(true)
+        .addChoices(
+          { name: "Rock", value: "r" },
+          { name: "Paper", value: "p" },
+          { name: "Scissors", value: "s" }
+        )
+    )
 ];
 
 /* =========================
