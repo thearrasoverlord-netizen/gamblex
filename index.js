@@ -61,6 +61,11 @@ function rollMineral() {
   return minerals[0]; // fallback
 }
 
+function getInventory(userId) {
+  if (!inventories.has(userId)) inventories.set(userId, {});
+  return inventories.get(userId);
+}
+
 /* =========================
    📜 SLASH COMMANDS
 ========================= */
@@ -147,7 +152,74 @@ client.once("ready", async () => {
    🎮 INTERACTION HANDLER
 ========================= */
 client.on("interactionCreate", async interaction => {
-  if (!interaction.isChatInputCommand()) return;
+  if (interaction.isChatInputCommand()) {
+if (interaction.isButton()) {
+  const userId = interaction.user.id;
+
+  /* ---------- BREAK ---------- */
+  if (interaction.customId.startsWith("mg_break_")) {
+    const mineralId = interaction.customId.replace("mg_break_", "");
+    const inv = getInventory(userId);
+
+    inv[mineralId] = (inv[mineralId] || 0) + 1;
+
+    return interaction.reply({
+      content: `⛏️ You mined **${mineralId}**!\n📦 Inventory: **${inv[mineralId]}**`,
+      ephemeral: true
+    });
+  }
+
+  /* ---------- MOVE ---------- */
+  if (interaction.customId.startsWith("mg_move_")) {
+    const mineral = rollMineral();
+
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId(`mg_break_${mineral.id}`)
+        .setLabel("⛏️ Break")
+        .setStyle(ButtonStyle.Success),
+
+      new ButtonBuilder()
+        .setCustomId(`mg_move_${mineral.id}`)
+        .setLabel("🚶 Move")
+        .setStyle(ButtonStyle.Primary),
+
+      new ButtonBuilder()
+        .setCustomId("mg_sell")
+        .setLabel("💰 Sell inventory")
+        .setStyle(ButtonStyle.Secondary)
+    );
+
+    const embed = new EmbedBuilder()
+      .setTitle("⛏️ Mining")
+      .setColor("Orange")
+      .setDescription(
+        `You found **${mineral.name}**\n` +
+        `💰 Worth: **$${mineral.value}**`
+      )
+      .setImage(mineral.img);
+
+    return interaction.update({
+      embeds: [embed],
+      components: [row]
+    });
+  }
+
+  /* ---------- SELL ---------- */
+  if (interaction.customId === "mg_sell") {
+    const inv = getInventory(userId);
+    let total = 0;
+
+    for (const id in inv) {
+      const mineral = minerals.find(m => m.id === id);
+      if (!mineral) continue;
+
+      total += mineral.value * inv[id];
+    }
+
+    inventories.set(userId, {}); // reset inventory
+
+    const ba
 
   const userId = interaction.user.id;
 
@@ -283,12 +355,12 @@ Buy items & upgrades *(Coming soon)*
 
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
-        .setCustomId("mg_break")
+        .setCustomId(`mg_break_${mineral.id}`)
         .setLabel("⛏️ Break")
         .setStyle(ButtonStyle.Success),
 
       new ButtonBuilder()
-        .setCustomId("mg_move")
+        .setCustomId(`mg_move_${mineral.id}`)
         .setLabel("🚶 Move")
         .setStyle(ButtonStyle.Primary),
 
