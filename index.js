@@ -22,6 +22,14 @@ const lastDice = new Map();
 const inventories = new Map(); // mining inventory
 const pickaxes = new Map();    // pickaxe level
 const rpsGames = new Map();
+const minerals = [
+  { id: "air", name: "Air", value: 0, chance: 35, img: "https://i.imgur.com/OKFxYjH.jpeg" },
+  { id: "stone", name: "Stone", value: 1, chance: 30, img: "https://i.imgur.com/GmuhJZx.jpeg" },
+  { id: "coal", name: "Coal", value: 5, chance: 15, img: "https://i.imgur.com/eHAEijR.png" },
+  { id: "iron", name: "Iron", value: 12, chance: 10, img: "https://i.imgur.com/goHV1Wn.jpeg" },
+  { id: "emerald", name: "Emerald", value: 60, chance: 7, img: "https://i.imgur.com/xyK5oTs.png" },
+  { id: "diamond", name: "Diamond", value: 150, chance: 3, img: "https://i.imgur.com/Tmtzrhl.png" }
+];
 
 /* =========================
    💰 BALANCE FUNCTIONS
@@ -253,6 +261,43 @@ Buy items & upgrades *(Coming soon)*
 
     return interaction.reply({ embeds: [embed] });
   }
+    /* ---------- MINING ---------- */
+  if (interaction.commandName === "mg") {
+    const mineral = rollMineral();
+
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId("mg_break")
+        .setLabel("⛏️ Break")
+        .setStyle(ButtonStyle.Success),
+
+      new ButtonBuilder()
+        .setCustomId("mg_move")
+        .setLabel("🚶 Move")
+        .setStyle(ButtonStyle.Primary),
+
+      new ButtonBuilder()
+        .setCustomId("mg_sell")
+        .setLabel("💰 Sell inventory")
+        .setStyle(ButtonStyle.Secondary)
+    );
+
+    const embed = new EmbedBuilder()
+      .setTitle("⛏️ Mining")
+      .setColor("Orange")
+      .setDescription(
+        `You found **${mineral.name}**\n` +
+        `💰 Worth: **$${mineral.value}**\n` +
+        `🎯 Chance: **${mineral.chance}%**`
+      )
+      .setImage(mineral.img);
+
+    return interaction.reply({
+      embeds: [embed],
+      components: [row]
+    });
+  }
+
   /* ---------- RPS ---------- */
 /* ---------- RPS (REAL WITH BUTTONS) ---------- */
 if (interaction.commandName === "rps") {
