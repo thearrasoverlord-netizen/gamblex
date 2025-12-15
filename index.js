@@ -88,6 +88,10 @@ const commands = [
     .setName("dice")
     .setDescription("Roll a daily dice"),
 
+  new SlashCommandBuilder()
+  .setName("mg")
+  .setDescription("⛏️ Mine minerals and make money"),
+
 new SlashCommandBuilder()
   .setName("rps")
   .setDescription("Challenge someone to Rock Paper Scissors")
