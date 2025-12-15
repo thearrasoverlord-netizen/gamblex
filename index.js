@@ -80,20 +80,29 @@ const commands = [
     .setName("dice")
     .setDescription("Roll a daily dice"),
 
-  new SlashCommandBuilder()
-    .setName("rps")
-    .setDescription("Challenge someone to Rock Paper Scissors")
-    .addUserOption(o =>
-      o.setName("user")
-        .setDescription("Opponent")
-        .setRequired(true)
-    )
-    .addIntegerOption(o =>
-      o.setName("money")
-        .setDescription("Bet amount")
-        .setRequired(true)
-    )
-];
+new SlashCommandBuilder()
+  .setName("rps")
+  .setDescription("Challenge someone to Rock Paper Scissors")
+  .addUserOption(o =>
+    o.setName("user")
+      .setDescription("Opponent")
+      .setRequired(true)
+  )
+  .addIntegerOption(o =>
+    o.setName("money")
+      .setDescription("Bet amount")
+      .setRequired(true)
+  )
+  .addStringOption(o =>
+    o.setName("choice")
+      .setDescription("Your move")
+      .setRequired(true)
+      .addChoices(
+        { name: "Rock", value: "r" },
+        { name: "Paper", value: "p" },
+        { name: "Scissors", value: "s" }
+      )
+  )
 
 /* =========================
    🚀 REGISTER COMMANDS
