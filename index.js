@@ -47,6 +47,18 @@ function getBalance(userId) {
 
 function setBalance(userId, amount) {
   balances.set(userId, amount);
+
+// ⬇️ PEGA ESTO AQUÍ
+function rollMineral() {
+  const total = minerals.reduce((sum, m) => sum + m.chance, 0);
+  let roll = Math.random() * total;
+
+  for (const m of minerals) {
+    if (roll < m.chance) return m;
+    roll -= m.chance;
+  }
+
+  return minerals[0]; // fallback
 }
 
 /* =========================
