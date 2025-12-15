@@ -102,8 +102,8 @@ new SlashCommandBuilder()
         { name: "Paper", value: "p" },
         { name: "Scissors", value: "s" }
       )
-  )
-
+  ),
+]
 /* =========================
    🚀 REGISTER COMMANDS
 ========================= */
