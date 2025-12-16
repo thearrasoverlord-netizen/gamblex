@@ -21,11 +21,30 @@ const client = new Client({
    💰 BALANCES (TEMP)
 ========================= */
 const balances = new Map();
+/* =========================
+   ⛏️ MINING DATA
+========================= */
+const inventories = new Map();
+
+const minerals = [
+  { id: "air", name: "Aire", chance: 25, value: 0 },
+  { id: "stone", name: "Piedra", chance: 25, value: 1 },
+  { id: "coal", name: "Carbón", chance: 25, value: 2 },
+  { id: "iron", name: "Hierro", chance: 10, value: 4 },
+  { id: "emerald", name: "Esmeralda", chance: 10, value: 16 },
+  { id: "emerald2", name: "Esmeralda II", chance: 3, value: 60 },
+  { id: "diamond", name: "Diamante", chance: 1, value: 300 },
+  { id: "diamond2", name: "Diamante II", chance: 1, value: 1000 }
+];
 
 /* =========================
    🎮 RPS GAMES
 ========================= */
 const rpsGames = new Map();
+/* =========================
+   ⛏️ MG SESSIONS
+========================= */
+const mgSessions = new Map();
 
 /* =========================
    🧠 HELPERS
@@ -45,6 +64,22 @@ function beats(a, b) {
     (a === "p" && b === "r") ||
     (a === "s" && b === "p")
   );
+}
+function rollMineral() {
+  const total = minerals.reduce((sum, m) => sum + m.chance, 0);
+  let roll = Math.random() * total;
+
+  for (const m of minerals) {
+    if (roll < m.chance) return m;
+    roll -= m.chance;
+  }
+
+  return minerals[0]; // fallback
+}
+
+function getInventory(userId) {
+  if (!inventories.has(userId)) inventories.set(userId, {});
+  return inventories.get(userId);
 }
 
 function name(c) {
@@ -79,6 +114,9 @@ const commands = [
         )
     )
 ];
+new SlashCommandBuilder()
+  .setName("mg")
+  .setDescription("⛏️ Go mining"),
 
 /* =========================
    🚀 REGISTER
@@ -131,6 +169,53 @@ client.on("interactionCreate", async interaction => {
         `**${challenger.username}** challenged **${opponent.username}**!\n\n` +
         `💰 Bet: **${bet} coins**`
       );
+if (interaction.commandName === "mg") {
+  const userId = interaction.user.id;
+
+  // 💥 eliminar sesión anterior si existe
+  if (mgSessions.has(userId)) {
+    try {
+      await mgSessions.get(userId).message.delete();
+    } catch {}
+    mgSessions.delete(userId);
+  }
+
+  const embed = new EmbedBuilder()
+    .setTitle("⛏️ Mina")
+    .setColor("DarkGrey")
+    .setDescription("Elige una acción:")
+    .addFields(
+      { name: "💰 Balance", value: `${getBalance(userId)} monedas`, inline: true }
+    );
+
+  const row = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId("mg_mine")
+      .setLabel("⛏️ Minar")
+      .setStyle(ButtonStyle.Primary),
+    new ButtonBuilder()
+      .setCustomId("mg_sell")
+      .setLabel("💰 Vender")
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId("mg_exit")
+      .setLabel("🚪 Salir")
+      .setStyle(ButtonStyle.Danger)
+  );
+
+  const msg = await interaction.reply({
+    embeds: [embed],
+    components: [row],
+    fetchReply: true
+  });
+
+  mgSessions.set(userId, {
+    messageId: msg.id,
+    message: msg
+  });
+
+  return;
+}
 
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId("rps_r").setLabel("🪨 Rock").setStyle(ButtonStyle.Primary),
