@@ -94,14 +94,10 @@ const commands = [
     .setName("rps")
     .setDescription("Rock Paper Scissors")
     .addUserOption(o =>
-      o.setName("user")
-        .setDescription("Opponent")
-        .setRequired(true)
+      o.setName("user").setDescription("Opponent").setRequired(true)
     )
     .addIntegerOption(o =>
-      o.setName("money")
-        .setDescription("Bet amount")
-        .setRequired(true)
+      o.setName("money").setDescription("Bet amount").setRequired(true)
     )
     .addStringOption(o =>
       o.setName("choice")
@@ -112,11 +108,12 @@ const commands = [
           { name: "Paper", value: "p" },
           { name: "Scissors", value: "s" }
         )
-    )
-  
-new SlashCommandBuilder()
-  .setName("mg")
-  .setDescription("⛏️ Go mining"),
+    ),
+
+  // ⛏️ MG
+  new SlashCommandBuilder()
+    .setName("mg")
+    .setDescription("⛏️ Go mining")
 ];
 
 /* =========================
@@ -139,115 +136,128 @@ client.once("ready", async () => {
 ========================= */
 client.on("interactionCreate", async interaction => {
 
-  /* ---------- SLASH ---------- */
+  /* ---------- SLASH COMMANDS ---------- */
   if (interaction.isChatInputCommand()) {
-    if (interaction.commandName !== "rps") return;
 
-    const challenger = interaction.user;
-    const opponent = interaction.options.getUser("user");
-    const bet = interaction.options.getInteger("money");
-    const choice = interaction.options.getString("choice");
+    /* ===== ⛏️ MG ===== */
+    if (interaction.commandName === "mg") {
+      const userId = interaction.user.id;
 
-    if (opponent.bot)
-      return interaction.reply({ content: "🤖 You can't play against bots.", ephemeral: true });
+      // eliminar sesión anterior
+      if (mgSessions.has(userId)) {
+        try {
+          await mgSessions.get(userId).message.delete();
+        } catch {}
+        mgSessions.delete(userId);
+      }
 
-    if (opponent.id === challenger.id)
-      return interaction.reply({ content: "❌ You can't play against yourself.", ephemeral: true });
+      const embed = new EmbedBuilder()
+        .setTitle("⛏️ Mina")
+        .setColor("DarkGrey")
+        .setDescription("Elige una acción:")
+        .addFields({
+          name: "💰 Balance",
+          value: `${getBalance(userId)} monedas`
+        });
 
-    if (bet <= 0)
-      return interaction.reply({ content: "❌ Bet must be positive.", ephemeral: true });
-
-    if (getBalance(challenger.id) < bet)
-      return interaction.reply({ content: "❌ You don't have enough coins.", ephemeral: true });
-
-    if (getBalance(opponent.id) < bet)
-      return interaction.reply({ content: "❌ Opponent doesn't have enough coins.", ephemeral: true });
-
-    const embed = new EmbedBuilder()
-      .setTitle("🪨📄✂️ RPS CHALLENGE")
-      .setColor("Gold")
-      .setDescription(
-        `**${challenger.username}** challenged **${opponent.username}**!\n\n` +
-        `💰 Bet: **${bet} coins**`
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId("mg_mine")
+          .setLabel("⛏️ Minar")
+          .setStyle(ButtonStyle.Primary),
+        new ButtonBuilder()
+          .setCustomId("mg_sell")
+          .setLabel("💰 Vender")
+          .setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder()
+          .setCustomId("mg_exit")
+          .setLabel("🚪 Salir")
+          .setStyle(ButtonStyle.Danger)
       );
-if (interaction.commandName === "mg") {
-  const userId = interaction.user.id;
 
-  // 💥 eliminar sesión anterior si existe
-  if (mgSessions.has(userId)) {
-    try {
-      await mgSessions.get(userId).message.delete();
-    } catch {}
-    mgSessions.delete(userId);
+      const msg = await interaction.reply({
+        embeds: [embed],
+        components: [row],
+        fetchReply: true
+      });
+
+      mgSessions.set(userId, { message: msg });
+      return;
+    }
+
+    /* ===== 🪨 RPS ===== */
+    if (interaction.commandName === "rps") {
+      const challenger = interaction.user;
+      const opponent = interaction.options.getUser("user");
+      const bet = interaction.options.getInteger("money");
+      const choice = interaction.options.getString("choice");
+
+      if (opponent.bot || opponent.id === challenger.id)
+        return interaction.reply({ content: "❌ Invalid opponent.", ephemeral: true });
+
+      if (bet <= 0)
+        return interaction.reply({ content: "❌ Bet must be positive.", ephemeral: true });
+
+      if (getBalance(challenger.id) < bet || getBalance(opponent.id) < bet)
+        return interaction.reply({ content: "❌ Not enough coins.", ephemeral: true });
+
+      const embed = new EmbedBuilder()
+        .setTitle("🪨📄✂️ RPS CHALLENGE")
+        .setColor("Gold")
+        .setDescription(
+          `**${challenger.username}** vs **${opponent.username}**\n💰 Bet: ${bet}`
+        );
+
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId("rps_r").setLabel("🪨 Rock").setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId("rps_p").setLabel("📄 Paper").setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId("rps_s").setLabel("✂️ Scissors").setStyle(ButtonStyle.Primary)
+      );
+
+      const msg = await interaction.reply({
+        embeds: [embed],
+        components: [row],
+        fetchReply: true
+      });
+
+      rpsGames.set(msg.id, {
+        challengerId: challenger.id,
+        opponentId: opponent.id,
+        bet,
+        choice
+      });
+    }
   }
 
-  const embed = new EmbedBuilder()
-    .setTitle("⛏️ Mina")
-    .setColor("DarkGrey")
-    .setDescription("Elige una acción:")
-    .addFields(
-      { name: "💰 Balance", value: `${getBalance(userId)} monedas`, inline: true }
-    );
-
-  const row = new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId("mg_mine")
-      .setLabel("⛏️ Minar")
-      .setStyle(ButtonStyle.Primary),
-    new ButtonBuilder()
-      .setCustomId("mg_sell")
-      .setLabel("💰 Vender")
-      .setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder()
-      .setCustomId("mg_exit")
-      .setLabel("🚪 Salir")
-      .setStyle(ButtonStyle.Danger)
-  );
-
-  const msg = await interaction.reply({
-    embeds: [embed],
-    components: [row],
-    fetchReply: true
-  });
-
-  mgSessions.set(userId, {
-    messageId: msg.id,
-    message: msg
-  });
-
-  return;
-}
-
-    const row = new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId("rps_r").setLabel("🪨 Rock").setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId("rps_p").setLabel("📄 Paper").setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId("rps_s").setLabel("✂️ Scissors").setStyle(ButtonStyle.Primary)
-    );
-
-    const msg = await interaction.reply({
-      embeds: [embed],
-      components: [row],
-      fetchReply: true
-    });
-
-    rpsGames.set(msg.id, {
-      challengerId: challenger.id,
-      opponentId: opponent.id,
-      bet,
-      choice
-    });
-  }
-
-  /* ---------- BUTTON ---------- */
+  /* ---------- BUTTONS ---------- */
   if (interaction.isButton()) {
+
+    /* ===== ⛏️ MG BUTTONS ===== */
+    if (interaction.customId.startsWith("mg_")) {
+      if (interaction.customId === "mg_mine") {
+        const mineral = rollMineral();
+        const inv = getInventory(interaction.user.id);
+        inv[mineral.id] = (inv[mineral.id] || 0) + 1;
+
+        return interaction.reply({
+          content: `⛏️ Encontraste **${mineral.name}** (+${mineral.value})`,
+          ephemeral: true
+        });
+      }
+
+      if (interaction.customId === "mg_exit") {
+        mgSessions.delete(interaction.user.id);
+        return interaction.message.delete();
+      }
+
+      return;
+    }
+
+    /* ===== 🪨 RPS BUTTONS ===== */
     if (!interaction.customId.startsWith("rps_")) return;
 
     const game = rpsGames.get(interaction.message.id);
-    if (!game)
-      return interaction.reply({ content: "⌛ This game expired.", ephemeral: true });
-
-    if (interaction.user.id !== game.opponentId)
-      return interaction.reply({ content: "❌ This is not your challenge.", ephemeral: true });
+    if (!game) return;
 
     const opponentChoice = interaction.customId.split("_")[1];
     const challengerChoice = game.choice;
@@ -265,19 +275,14 @@ if (interaction.commandName === "mg") {
       result = "🎉 Opponent wins!";
     }
 
-    const embed = new EmbedBuilder()
-      .setTitle("✊ RPS RESULT")
-      .setColor("Green")
-      .addFields(
-        { name: "Challenger", value: name(challengerChoice), inline: true },
-        { name: "Opponent", value: name(opponentChoice), inline: true },
-        { name: "Result", value: result }
-      );
-
     rpsGames.delete(interaction.message.id);
 
     interaction.update({
-      embeds: [embed],
+      embeds: [
+        new EmbedBuilder()
+          .setTitle("✊ RPS RESULT")
+          .setDescription(result)
+      ],
       components: []
     });
   }
