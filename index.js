@@ -113,10 +113,11 @@ const commands = [
           { name: "Scissors", value: "s" }
         )
     )
-];
+  
 new SlashCommandBuilder()
   .setName("mg")
   .setDescription("⛏️ Go mining"),
+];
 
 /* =========================
    🚀 REGISTER
