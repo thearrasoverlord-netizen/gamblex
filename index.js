@@ -181,9 +181,9 @@ mgSessions.set(userId, {
 /* ===== ⛏️ MG COMMAND ===== */
 if (interaction.commandName === "mg") {
   const userId = interaction.user.id;
-  const block = rollMineral();
 
-  // crear / sobrescribir sesión
+  const block = rollMineral(); // ✅ UNA sola vez
+
   mgSessions.set(userId, {
     block,
     pickaxe: "wood",
