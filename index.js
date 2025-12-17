@@ -37,6 +37,12 @@ const minerals = [
   { id: "diamond2", name: "Diamond II", chance: 1, value: 1000, img: "https://i.imgur.com/Tmtzrhl.png" }
 ];
 
+const pickaxes = {
+  wood:     { actions: 2 },
+  stone:    { actions: 5 },
+  iron:     { actions: 16 },
+  diamond:  { actions: 50 }
+};
 
 /* =========================
    🎮 RPS GAMES
@@ -85,6 +91,21 @@ function getInventory(userId) {
 
 function name(c) {
   return c === "r" ? "🪨 Rock" : c === "p" ? "📄 Paper" : "✂️ Scissors";
+}
+
+function useAction(session) {
+  const RESET = 2 * 60 * 60 * 1000;
+  const now = Date.now();
+
+  if (!session.lastReset || now - session.lastReset >= RESET) {
+    session.lastReset = now;
+    session.actionsLeft = pickaxes[session.pickaxe].actions;
+  }
+
+  if (session.actionsLeft <= 0) return false;
+
+  session.actionsLeft--;
+  return true;
 }
 
 /* =========================
@@ -142,11 +163,33 @@ client.on("interactionCreate", async interaction => {
 
 /* ===== ⛏️ MG COMMAND ===== */
 if (interaction.commandName === "mg") {
-  const userId = interaction.user.id;
+const userId = interaction.user.id;
+const block = rollMineral();
+
+mgSessions.set(userId, {
+  block,
+  pickaxe: "wood",
+  actionsLeft: pickaxes.wood.actions,
+  lastReset: Date.now()
+});
 
   // nueva sesión (sobrescribe la anterior)
   const block = rollMineral();
-  mgSessions.set(userId, { block });
+
+});
+
+/* ===== ⛏️ MG COMMAND ===== */
+if (interaction.commandName === "mg") {
+  const userId = interaction.user.id;
+  const block = rollMineral();
+
+  // crear / sobrescribir sesión
+  mgSessions.set(userId, {
+    block,
+    pickaxe: "wood",
+    actionsLeft: pickaxes.wood.actions,
+    lastReset: Date.now()
+  });
 
   const embed = new EmbedBuilder()
     .setTitle("⛏️ Mining in the caves!")
@@ -154,7 +197,8 @@ if (interaction.commandName === "mg") {
     .setDescription("You moved forward and discovered a block.")
     .addFields(
       { name: "🧱 Current Block", value: block.name, inline: true },
-      { name: "💰 Value", value: `${block.value} coins`, inline: true }
+      { name: "💰 Value", value: `${block.value} coins`, inline: true },
+      { name: "⚡ Actions Left", value: `${pickaxes.wood.actions}`, inline: true }
     )
     .setImage(block.img);
 
@@ -180,6 +224,7 @@ if (interaction.commandName === "mg") {
     components: [row]
   });
 }
+
 
     /* ===== 🪨 RPS ===== */
     if (interaction.commandName === "rps") {
