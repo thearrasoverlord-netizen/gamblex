@@ -27,15 +27,16 @@ const balances = new Map();
 const inventories = new Map();
 
 const minerals = [
-  { id: "air", name: "Aire", chance: 25, value: 0 },
-  { id: "stone", name: "Piedra", chance: 25, value: 1 },
-  { id: "coal", name: "Carbón", chance: 25, value: 2 },
-  { id: "iron", name: "Hierro", chance: 10, value: 4 },
-  { id: "emerald", name: "Esmeralda", chance: 10, value: 16 },
-  { id: "emerald2", name: "Esmeralda II", chance: 3, value: 60 },
-  { id: "diamond", name: "Diamante", chance: 1, value: 300 },
-  { id: "diamond2", name: "Diamante II", chance: 1, value: 1000 }
+  { id: "air", name: "Air", chance: 25, value: 0, img: "https://i.imgur.com/OKFxYjH.jpeg" },
+  { id: "stone", name: "Stone", chance: 25, value: 1, img: "https://i.imgur.com/GmuhJZx.jpeg" },
+  { id: "coal", name: "Coal", chance: 25, value: 2, img: "https://i.imgur.com/eHAEijR.png" },
+  { id: "iron", name: "Iron", chance: 10, value: 4, img: "https://i.imgur.com/goHV1Wn.jpeg" },
+  { id: "emerald", name: "Emerald", chance: 10, value: 16, img: "https://i.imgur.com/xyK5oTs.png" },
+  { id: "emerald2", name: "Emerald II", chance: 3, value: 60, img: "https://i.imgur.com/xyK5oTs.png" },
+  { id: "diamond", name: "Diamond", chance: 1, value: 300, img: "https://i.imgur.com/Tmtzrhl.png" },
+  { id: "diamond2", name: "Diamond II", chance: 1, value: 1000, img: "https://i.imgur.com/Tmtzrhl.png" }
 ];
+
 
 /* =========================
    🎮 RPS GAMES
@@ -139,51 +140,46 @@ client.on("interactionCreate", async interaction => {
   /* ---------- SLASH COMMANDS ---------- */
   if (interaction.isChatInputCommand()) {
 
-    /* ===== ⛏️ MG ===== */
-    if (interaction.commandName === "mg") {
-      const userId = interaction.user.id;
+/* ===== ⛏️ MG COMMAND ===== */
+if (interaction.commandName === "mg") {
+  const userId = interaction.user.id;
 
-      // eliminar sesión anterior
-      if (mgSessions.has(userId)) {
-        try {
-          await mgSessions.get(userId).message.delete();
-        } catch {}
-        mgSessions.delete(userId);
-      }
+  // nueva sesión (sobrescribe la anterior)
+  const block = rollMineral();
+  mgSessions.set(userId, { block });
 
-      const embed = new EmbedBuilder()
-        .setTitle("⛏️ Mina")
-        .setColor("DarkGrey")
-        .setDescription("Elige una acción:")
-        .addFields({
-          name: "💰 Balance",
-          value: `${getBalance(userId)} monedas`
-        });
+  const embed = new EmbedBuilder()
+    .setTitle("⛏️ Mining in the caves!")
+    .setColor("DarkGrey")
+    .setDescription("You moved forward and discovered a block.")
+    .addFields(
+      { name: "🧱 Current Block", value: block.name, inline: true },
+      { name: "💰 Value", value: `${block.value} coins`, inline: true }
+    )
+    .setImage(block.img);
 
-      const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId("mg_mine")
-          .setLabel("⛏️ Minar")
-          .setStyle(ButtonStyle.Primary),
-        new ButtonBuilder()
-          .setCustomId("mg_sell")
-          .setLabel("💰 Vender")
-          .setStyle(ButtonStyle.Secondary),
-        new ButtonBuilder()
-          .setCustomId("mg_exit")
-          .setLabel("🚪 Salir")
-          .setStyle(ButtonStyle.Danger)
-      );
+  const row = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId("mg_move")
+      .setLabel("🚶 Move")
+      .setStyle(ButtonStyle.Secondary),
 
-      const msg = await interaction.reply({
-        embeds: [embed],
-        components: [row],
-        fetchReply: true
-      });
+    new ButtonBuilder()
+      .setCustomId("mg_mine")
+      .setLabel("⛏️ Mine")
+      .setStyle(ButtonStyle.Primary),
 
-      mgSessions.set(userId, { message: msg });
-      return;
-    }
+    new ButtonBuilder()
+      .setCustomId("mg_sell")
+      .setLabel("💰 Sell Inventory")
+      .setStyle(ButtonStyle.Success)
+  );
+
+  return interaction.reply({
+    embeds: [embed],
+    components: [row]
+  });
+}
 
     /* ===== 🪨 RPS ===== */
     if (interaction.commandName === "rps") {
@@ -233,25 +229,75 @@ client.on("interactionCreate", async interaction => {
   if (interaction.isButton()) {
 
     /* ===== ⛏️ MG BUTTONS ===== */
-    if (interaction.customId.startsWith("mg_")) {
-      if (interaction.customId === "mg_mine") {
-        const mineral = rollMineral();
-        const inv = getInventory(interaction.user.id);
-        inv[mineral.id] = (inv[mineral.id] || 0) + 1;
+if (interaction.customId === "mg_move") {
+  const userId = interaction.user.id;
+  const session = mgSessions.get(userId);
+  if (!session) return;
 
-        return interaction.reply({
-          content: `⛏️ Encontraste **${mineral.name}** (+${mineral.value})`,
-          ephemeral: true
-        });
-      }
+  session.block = rollMineral();
 
-      if (interaction.customId === "mg_exit") {
-        mgSessions.delete(interaction.user.id);
-        return interaction.message.delete();
-      }
+  const embed = new EmbedBuilder()
+    .setTitle("🚶 You moved deeper")
+    .setColor("Blue")
+    .setDescription("A new block appeared.")
+    .addFields(
+      { name: "🧱 Current Block", value: session.block.name, inline: true },
+      { name: "💰 Value", value: `${session.block.value} coins`, inline: true }
+    )
+    .setImage(session.block.img);
 
-      return;
-    }
+  return interaction.update({ embeds: [embed] });
+}
+if (interaction.customId === "mg_mine") {
+  const userId = interaction.user.id;
+  const session = mgSessions.get(userId);
+  if (!session) return;
+
+  const block = session.block;
+  const inv = getInventory(userId);
+
+  inv[block.id] = (inv[block.id] || 0) + 1;
+  session.block = minerals.find(m => m.id === "air");
+
+  const embed = new EmbedBuilder()
+    .setTitle("⛏️ Block Mined")
+    .setColor("Orange")
+    .setDescription(`You mined **${block.name}**.`)
+    .addFields(
+      { name: "📦 Stored", value: `${inv[block.id]}x`, inline: true },
+      { name: "➡️ Current Block", value: "Air", inline: true }
+    )
+    .setImage(block.img);
+
+  return interaction.update({ embeds: [embed] });
+}
+if (interaction.customId === "mg_sell") {
+  const userId = interaction.user.id;
+  const inv = getInventory(userId);
+  let total = 0;
+
+  for (const id in inv) {
+    const mineral = minerals.find(m => m.id === id);
+    if (!mineral) continue;
+    total += mineral.value * inv[id];
+  }
+
+  inventories.set(userId, {});
+  setBalance(userId, getBalance(userId) + total);
+
+  const embed = new EmbedBuilder()
+    .setTitle("💰 Inventory Sold")
+    .setColor("Green")
+    .setDescription("All minerals have been sold.")
+    .addFields(
+      { name: "💵 Earned", value: `${total} coins`, inline: true },
+      { name: "💰 Balance", value: `${getBalance(userId)} coins`, inline: true }
+    )
+    .setImage("https://i.imgur.com/3ZUrjUP.png");
+
+  return interaction.reply({ embeds: [embed], ephemeral: true });
+}
+
 
     /* ===== 🪨 RPS BUTTONS ===== */
     if (!interaction.customId.startsWith("rps_")) return;
