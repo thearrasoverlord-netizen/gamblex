@@ -162,27 +162,11 @@ client.on("interactionCreate", async interaction => {
   if (interaction.isChatInputCommand()) {
 
 /* ===== ⛏️ MG COMMAND ===== */
-if (interaction.commandName === "mg") {
-const userId = interaction.user.id;
-const block = rollMineral();
-
-mgSessions.set(userId, {
-  block,
-  pickaxe: "wood",
-  actionsLeft: pickaxes.wood.actions,
-  lastReset: Date.now()
-});
-
-  // nueva sesión (sobrescribe la anterior)
-  const block = rollMineral();
-
-});
-
 /* ===== ⛏️ MG COMMAND ===== */
 if (interaction.commandName === "mg") {
   const userId = interaction.user.id;
 
-  const block = rollMineral(); // ✅ UNA sola vez
+  const block = rollMineral(); // 👈 UNA SOLA VEZ
 
   mgSessions.set(userId, {
     block,
