@@ -186,28 +186,27 @@ if (interaction.commandName === "mg") {
     )
     .setImage(block.img);
 
-  const row = new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId("mg_move")
-      .setLabel("🚶 Move")
-      .setStyle(ButtonStyle.Secondary),
+const row = new ActionRowBuilder().addComponents(
+  new ButtonBuilder()
+    .setCustomId("mg_move")
+    .setLabel("🚶 Move")
+    .setStyle(ButtonStyle.Secondary),
 
-    new ButtonBuilder()
-      .setCustomId("mg_mine")
-      .setLabel("⛏️ Mine")
-      .setStyle(ButtonStyle.Primary),
+  new ButtonBuilder()
+    .setCustomId("mg_mine")
+    .setLabel("⛏️ Mine")
+    .setStyle(ButtonStyle.Primary),
 
-    new ButtonBuilder()
-      .setCustomId("mg_sell")
-      .setLabel("💰 Sell Inventory")
-      .setStyle(ButtonStyle.Success)
-  );
+  new ButtonBuilder()
+    .setCustomId("mg_inventory")
+    .setLabel("🎒 Inventory")
+    .setStyle(ButtonStyle.Secondary),
 
-  return interaction.reply({
-    embeds: [embed],
-    components: [row]
-  });
-}
+  new ButtonBuilder()
+    .setCustomId("mg_sell")
+    .setLabel("💰 Sell Inventory")
+    .setStyle(ButtonStyle.Success)
+);
 
 
     /* ===== 🪨 RPS ===== */
@@ -263,6 +262,13 @@ if (interaction.customId === "mg_move") {
   const session = mgSessions.get(userId);
   if (!session) return;
 
+  if (!useAction(session)) {
+    return interaction.reply({
+      content: "⛔ You have no actions left. Come back later.",
+      ephemeral: true
+    });
+  }
+
   session.block = rollMineral();
 
   const embed = new EmbedBuilder()
@@ -271,21 +277,40 @@ if (interaction.customId === "mg_move") {
     .setDescription("A new block appeared.")
     .addFields(
       { name: "🧱 Current Block", value: session.block.name, inline: true },
-      { name: "💰 Value", value: `${session.block.value} coins`, inline: true }
+      { name: "💰 Value", value: `${session.block.value} coins`, inline: true },
+      { name: "⚡ Actions Left", value: `${session.actionsLeft}`, inline: true }
     )
     .setImage(session.block.img);
 
   return interaction.update({ embeds: [embed] });
+}
+interaction.update({ embeds: [embed] });
 }
 if (interaction.customId === "mg_mine") {
   const userId = interaction.user.id;
   const session = mgSessions.get(userId);
   if (!session) return;
 
+  if (session.block.id === "air") {
+    return interaction.reply({
+      content: "💨 You can't mine air.",
+      ephemeral: true
+    });
+  }
+
+  if (!useAction(session)) {
+    return interaction.reply({
+      content: "⛔ You have no actions left. Come back later.",
+      ephemeral: true
+    });
+  }
+
   const block = session.block;
   const inv = getInventory(userId);
 
   inv[block.id] = (inv[block.id] || 0) + 1;
+
+  // 🔥 el bloque se convierte inmediatamente en aire
   session.block = minerals.find(m => m.id === "air");
 
   const embed = new EmbedBuilder()
@@ -293,13 +318,15 @@ if (interaction.customId === "mg_mine") {
     .setColor("Orange")
     .setDescription(`You mined **${block.name}**.`)
     .addFields(
-      { name: "📦 Stored", value: `${inv[block.id]}x`, inline: true },
+      { name: "📦 In Inventory", value: `${inv[block.id]}x`, inline: true },
+      { name: "⚡ Actions Left", value: `${session.actionsLeft}`, inline: true },
       { name: "➡️ Current Block", value: "Air", inline: true }
     )
     .setImage(block.img);
 
   return interaction.update({ embeds: [embed] });
 }
+
 if (interaction.customId === "mg_sell") {
   const userId = interaction.user.id;
   const inv = getInventory(userId);
@@ -324,7 +351,38 @@ if (interaction.customId === "mg_sell") {
     )
     .setImage("https://i.imgur.com/3ZUrjUP.png");
 
-  return interaction.reply({ embeds: [embed], ephemeral: true });
+  return interaction.update({ embeds: [embed] });
+
+}
+if (interaction.customId === "mg_inventory") {
+  const userId = interaction.user.id;
+  const inv = getInventory(userId);
+
+  let desc = "";
+  let total = 0;
+
+  for (const id in inv) {
+    const mineral = minerals.find(m => m.id === id);
+    if (!mineral) continue;
+
+    const qty = inv[id];
+    const value = mineral.value * qty;
+    total += value;
+
+    desc += `**${mineral.name}** × ${qty} → 💰 ${value}\n`;
+  }
+
+  if (!desc) desc = "_Inventory is empty._";
+
+  const embed = new EmbedBuilder()
+    .setTitle("🎒 Your Inventory")
+    .setColor("Purple")
+    .setDescription(desc)
+    .addFields(
+      { name: "💰 Total Value", value: `${total} coins`, inline: true }
+    );
+
+  return interaction.update({ embeds: [embed] });
 }
 
 
